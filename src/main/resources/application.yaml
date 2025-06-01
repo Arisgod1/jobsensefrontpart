@@ -8,3 +8,7 @@ spring:
         model: deepseek-r1:7b
     openai:
       api-key: sk-6
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: debug
+    com.tmd.ai: debug
