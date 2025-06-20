@@ -5,7 +5,7 @@ spring:
     ollama:
       base-url: http://localhost:11434
       chat:
-        model: deepseek-r1:7b
+        model: deepseek-r1:8b
     openai:
       api-key: ${OPEN_API_KEY}
       base-url: https://dashscope.aliyuncs.com/compatible-mode
@@ -14,5 +14,5 @@ spring:
           model: qwen-max-latest
 logging:
   level:
-    org.springframework.ai.chat.client.advisor: debug
+    org.springframework.ai: debug
     com.tmd.ai: debug
