@@ -7,11 +7,11 @@ spring:
       chat:
         model: deepseek-r1:8b
     openai:
-      api-key: ${OPEN_API_KEY}
+      api-key: sk-6ba44564c1ab4c80b1e012a7fb89dd87
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:
-          model: qwen-max-latest
+          model: qwen-vl-max-latest
 logging:
   level:
     org.springframework.ai: debug
