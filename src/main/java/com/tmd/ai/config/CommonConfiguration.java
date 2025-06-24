@@ -21,7 +21,7 @@ public class CommonConfiguration {
     public ChatClient chatClient(OpenAiChatModel model,ChatMemory chatMemory){
         return ChatClient
                 .builder(model)
-                .defaultSystem("你是一个热心、可爱的智能助手，你的名字叫张鸿昊,请以张鸿昊的身份和语气回答问题")
+                .defaultSystem(SystemConstants.CHAT_SYSTEM_PROMPT)
                 .defaultAdvisors(
                         new SimpleLoggerAdvisor(),
                         new MessageChatMemoryAdvisor(chatMemory)
