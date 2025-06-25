@@ -6,19 +6,30 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class Result {
-    private Integer ok;
-    private String msg;
 
-    private Result(Integer ok, String msg) {
-        this.ok = ok;
-        this.msg = msg;
+    private Integer code; //编码：1成功，0为失败
+    private String msg; //错误信息
+    private Object data; //数据
+
+    public static Result success() {
+        Result result = new Result();
+        result.code = 1;
+        result.msg = "success";
+        return result;
     }
 
-    public static Result ok() {
-        return new Result(1, "ok");
+    public static Result success(Object object) {
+        Result result = new Result();
+        result.data = object;
+        result.code = 1;
+        result.msg = "success";
+        return result;
     }
 
-    public static Result fail(String msg) {
-        return new Result(0, msg);
+    public static Result error(String msg) {
+        Result result = new Result();
+        result.msg = msg;
+        result.code = 0;
+        return result;
     }
 }

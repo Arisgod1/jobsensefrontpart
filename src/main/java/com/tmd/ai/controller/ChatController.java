@@ -1,6 +1,5 @@
 package com.tmd.ai.controller;
 
-import com.tmd.ai.constants.SystemConstants;
 import com.tmd.ai.repository.ChatHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
