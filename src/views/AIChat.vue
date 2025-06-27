@@ -379,7 +379,7 @@ const startNewChat = () => {
   // 添加新对话到聊天历史列表
   const newChat = {
     id: newChatId,
-    title: `对话 ${newChatId.slice(-6)}`
+    title: `面试咨询`
   }
   chatHistory.value = [newChat, ...chatHistory.value] // 将新对话添加到列表开头
 }
