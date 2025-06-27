@@ -2,14 +2,7 @@
   <div class="resume-assistant" :class="{ 'dark': isDark }">
     <div class="header">
       <h1>简历智能评估</h1>
-      <div class="header-buttons">
-        <button class="btn secondary" @click="toggleHistory">
-          <i class="fas fa-history mr-2"></i> 历史记录
-        </button>
-        <button class="btn primary" @click="startNewChat">
-          <i class="fas fa-plus mr-2"></i> 新对话
-        </button>
-      </div>
+      
     </div>
 
     <div class="main-container">
@@ -79,160 +72,65 @@
           </div>
         </div>
 
-        <!-- 简历评估和聊天区域 -->
-        <div v-else>
-          <!-- 简历评估结果 -->
-          <div class="card assessment-card">
-            <div class="section-header">
-              <h2>简历分析</h2>
-              <div class="status-badge">
-                <i class="fas fa-check-circle mr-1"></i> 分析完成
+        <!-- 简历评估结果 -->
+        <div v-else class="card assessment-card">
+          <div class="section-header">
+            <h2>简历分析</h2>
+            <div class="status-badge">
+              <i class="fas fa-check-circle mr-1"></i> 分析完成
+            </div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">
+                <h4>综合评分</h4>
+                <span class="score">{{ overallScore }}</span>
               </div>
+              <div class="score-bar">
+                <div class="score-fill" :style="{ width: overallScorePercent + '%' }"></div>
+              </div>
+              <p class="metric-description">{{ overallEvaluation }}</p>
             </div>
 
-            <div class="metrics-grid">
-              <div class="metric-card">
-                <div class="metric-header">
-                  <h4>综合评分</h4>
-                  <span class="score">78/100</span>
-                </div>
-                <div class="score-bar">
-                  <div class="score-fill" style="width: 78%"></div>
-                </div>
-                <p class="metric-description">您的简历良好，但在结构和影响力方面还有改进空间。</p>
-              </div>
-
-              <div class="metric-card">
-                <h4 class="metric-title">关键指标</h4>
-                <div class="metrics-list">
-                  <div class="metric-item">
-                    <div class="metric-label">
-                      <span>清晰度</span>
-                      <span>65/100</span>
-                    </div>
-                    <div class="score-bar">
-                      <div class="score-fill yellow" style="width: 65%"></div>
-                    </div>
+            <div class="metric-card">
+              <h4 class="metric-title">关键指标</h4>
+              <div class="metrics-list">
+                <div 
+                  v-for="(value, key) in keyMetrics" 
+                  :key="key" 
+                  class="metric-item"
+                >
+                  <div class="metric-label">
+                    <span>{{ keyMap[key] || key }}</span>
+                    <span>{{ value }}</span>
                   </div>
-                  <div class="metric-item">
-                    <div class="metric-label">
-                      <span>相关性</span>
-                      <span>82/100</span>
-                    </div>
-                    <div class="score-bar">
-                      <div class="score-fill green" style="width: 82%"></div>
-                    </div>
-                  </div>
-                  <div class="metric-item">
-                    <div class="metric-label">
-                      <span>影响力</span>
-                      <span>71/100</span>
-                    </div>
-                    <div class="score-bar">
-                      <div class="score-fill purple" style="width: 71%"></div>
-                    </div>
+                  <div class="score-bar">
+                    <div 
+                      class="score-fill" 
+                      :class="getScoreColorClass(value)" 
+                      :style="{ width: extractScorePercent(value) + '%' }"
+                    ></div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <h2 class="section-title">改进建议</h2>
-            <div class="suggestions-grid">
-              <div class="suggestion-card">
-                <div class="suggestion-header">
-                  <div class="icon-bg blue">
-                    <i class="fas fa-bullseye"></i>
-                  </div>
-                  <h4>量化成就</h4>
-                </div>
-                <p>为工作经历添加具体指标（例如"销售额提升30%"）</p>
-              </div>
-              <div class="suggestion-card">
-                <div class="suggestion-header">
-                  <div class="icon-bg purple">
-                    <i class="fas fa-align-left"></i>
-                  </div>
-                  <h4>简化语言</h4>
-                </div>
-                <p>用更清晰、直接的语言替换复杂的表达</p>
-              </div>
-              <div class="suggestion-card">
-                <div class="suggestion-header">
-                  <div class="icon-bg green">
-                    <i class="fas fa-sitemap"></i>
-                  </div>
-                  <h4>优化结构</h4>
-                </div>
-                <p>重新组织段落，优先展示最相关的经验</p>
-              </div>
-              <div class="suggestion-card">
-                <div class="suggestion-header">
-                  <div class="icon-bg yellow">
-                    <i class="fas fa-magic"></i>
-                  </div>
-                  <h4>ATS优化</h4>
-                </div>
-                <p>添加更多职位描述中的关键词以通过自动筛选系统</p>
-              </div>
-              <div class="suggestion-card">
-                <div class="suggestion-header">
-                  <div class="icon-bg red">
-                    <i class="fas fa-broom"></i>
-                  </div>
-                  <h4>移除无关信息</h4>
-                </div>
-                <p>删除与职业目标无关的爱好和过时经历</p>
-              </div>
-              <div class="suggestion-card">
-                <div class="suggestion-header">
-                  <div class="icon-bg indigo">
-                    <i class="fas fa-graduation-cap"></i>
-                  </div>
-                  <h4>教育部分</h4>
-                </div>
-                <p>除非是应届毕业生，否则将教育经历放在较后位置</p>
               </div>
             </div>
           </div>
 
-          <!-- 聊天区域 -->
-          <div class="card chat-card">
-            <div class="chat-header">
-              <h2>简历问答</h2>
-            </div>
-            
-            <div class="messages" ref="messagesRef">
-              <div v-for="(message, index) in currentMessages" :key="index" class="message-bubble">
-                <div class="message-avatar" :class="message.role">
-                  <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
+          <h2 class="section-title">改进建议</h2>
+          <div class="suggestions-grid">
+            <div 
+              v-for="(suggestion, index) in improvementSuggestions" 
+              :key="index" 
+              class="suggestion-card"
+            >
+              <div class="suggestion-header">
+                <div class="icon-bg" :class="getIconColorClass(index)">
+                  <i :class="getSuggestionIcon(index)"></i>
                 </div>
-                <div class="message-content">
-                  <div v-if="message.isMarkdown" v-html="DOMPurify.sanitize(marked.parse(message.content))"></div>
-                  <template v-else>
-                    {{ message.content }}
-                  </template>
-                  <div class="message-time">
-                    {{ formatTime(message.timestamp) }}
-                  </div>
-                </div>
+                <h4>{{ suggestion.标题 }}</h4>
               </div>
-            </div>
-            
-            <div class="input-area">
-              <textarea
-                v-model="userInput"
-                @keydown.enter.prevent="sendMessage()"
-                placeholder="请输入您的问题..."
-                rows="1"
-                ref="inputRef"
-              ></textarea>
-              <button 
-                class="send-button" 
-                @click="sendMessage()"
-                :disabled="isStreaming || !userInput.trim()"
-              >
-                <i class="fas fa-paper-plane"></i>
-              </button>
+              <p>{{ suggestion.内容 }}</p>
             </div>
           </div>
         </div>
@@ -242,23 +140,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useDark } from '@vueuse/core'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 import { chatAPI } from '../services/api'
-import { useRouter } from 'vue-router'
 
 const isDark = useDark()
-const router = useRouter()
-const messagesRef = ref(null)
-const inputRef = ref(null)
 const fileInput = ref(null)
-const userInput = ref('')
-const isStreaming = ref(false)
 const isUploading = ref(false)
 const currentChatId = ref(null)
-const currentMessages = ref([])
 const chatHistory = ref([])
 const currentPdfName = ref('')
 const isDragging = ref(false)
@@ -267,49 +156,75 @@ const errorMessage = ref('')
 const showHistory = ref(false)
 const BASE_URL = 'http://localhost:8080'
 
-// 配置 marked
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-  sanitize: false
+// 简历分析数据
+const resumeAnalysisData = ref(null)
+
+// 计算属性：解析后端返回的数据
+const overallScore = computed(() => {
+  if (!resumeAnalysisData.value) return '0/100'
+  return resumeAnalysisData.value['综合评分']?.得分 || '0/100'
 })
 
-// 格式时间
-const formatTime = (date) => {
-  return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const overallEvaluation = computed(() => {
+  if (!resumeAnalysisData.value) return ''
+  return resumeAnalysisData.value['综合评分']?.评价 || ''
+})
+
+const overallScorePercent = computed(() => {
+  if (!overallScore.value) return 0
+  const score = overallScore.value.split('/')[0]
+  return parseInt(score) || 0
+})
+
+const keyMetrics = computed(() => {
+  if (!resumeAnalysisData.value) return {}
+  return resumeAnalysisData.value['关键指标'] || {}
+})
+
+const improvementSuggestions = computed(() => {
+  if (!resumeAnalysisData.value) return []
+  return resumeAnalysisData.value['改进建议'] || []
+})
+
+// 关键指标名称映射
+const keyMap = {
+  '清晰度': '清晰度',
+  '相关性': '相关性',
+  '影响力': '影响力'
 }
 
-// 调整输入框高度
-const adjustTextareaHeight = () => {
-  const textarea = inputRef.value
-  if (textarea) {
-    textarea.style.height = 'auto'
-    textarea.style.height = textarea.scrollHeight + 'px'
-  }
+// 根据分数获取颜色类名
+const getScoreColorClass = (scoreStr) => {
+  const score = parseInt(scoreStr.split('/')[0]) || 0
+  if (score >= 80) return 'green'
+  if (score >= 60) return 'yellow'
+  if (score >= 40) return 'purple'
+  return 'red'
 }
 
-// 滚动到底部
-const scrollToBottom = async () => {
-  await nextTick()
-  if (messagesRef.value) {
-    messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-  }
+// 提取分数百分比
+const extractScorePercent = (scoreStr) => {
+  const score = parseInt(scoreStr.split('/')[0]) || 0
+  return score
 }
 
-// 清理资源
-const cleanupResources = () => {
-  currentPdfName.value = ''
-  currentMessages.value = []
-  currentChatId.value = null
-  isUploading.value = false
-  uploadingFileName.value = ''
-  userInput.value = ''
-  isStreaming.value = false
-  errorMessage.value = ''
-  
-  if (inputRef.value) {
-    inputRef.value.style.height = 'auto'
-  }
+// 获取建议图标
+const getSuggestionIcon = (index) => {
+  const icons = [
+    'fas fa-bullseye',
+    'fas fa-align-left',
+    'fas fa-sitemap',
+    'fas fa-magic',
+    'fas fa-broom',
+    'fas fa-graduation-cap'
+  ]
+  return icons[index % icons.length] || 'fas fa-lightbulb'
+}
+
+// 获取图标背景颜色类
+const getIconColorClass = (index) => {
+  const colors = ['blue', 'purple', 'green', 'yellow', 'red', 'indigo']
+  return colors[index % colors.length] || 'blue'
 }
 
 // 切换历史记录侧边栏
@@ -333,11 +248,7 @@ const loadChat = async (chatId) => {
   try {
     // 加载消息历史
     const messages = await chatAPI.getChatMessages(chatId, 'pdf')
-    currentMessages.value = messages.map(msg => ({
-      ...msg,
-      isMarkdown: msg.role === 'assistant'
-    }))
-
+    
     // 从服务器获取文件名
     const response = await fetch(`${BASE_URL}/ai/pdf/file/${chatId}`)
     if (!response.ok) throw new Error('获取简历信息失败')
@@ -357,14 +268,25 @@ const loadChat = async (chatId) => {
       chatHistory.value[chatIndex].title = filename
     }
     
+    // 加载简历分析数据
+    const analysisResponse = await fetch(`${BASE_URL}/ai/pdf/analysis/${chatId}`)
+    if (!analysisResponse.ok) throw new Error('获取分析结果失败')
+    
+    const analysisData = await analysisResponse.json()
+    
+    // 解析后端返回的数据
+    if (analysisData.code === 1 && analysisData.data) {
+      try {
+        // 解析两层JSON字符串
+        resumeAnalysisData.value = JSON.parse(analysisData.data)
+      } catch (e) {
+        console.error('解析分析数据失败:', e)
+        resumeAnalysisData.value = null
+      }
+    }
+    
   } catch (error) {
     console.error('加载失败:', error)
-    currentMessages.value.push({
-      role: 'assistant',
-      content: '加载失败，请重试。',
-      timestamp: new Date(),
-      isMarkdown: true
-    })
   }
 }
 
@@ -380,6 +302,16 @@ const loadChatHistory = async () => {
     console.error('加载聊天历史失败:', error)
     chatHistory.value = []
   }
+}
+
+// 清理资源
+const cleanupResources = () => {
+  currentPdfName.value = ''
+  currentChatId.value = null
+  isUploading.value = false
+  uploadingFileName.value = ''
+  errorMessage.value = ''
+  resumeAnalysisData.value = null
 }
 
 // 处理拖拽
@@ -461,14 +393,22 @@ const uploadFile = async (file) => {
       chatHistory.value = [newChat, ...chatHistory.value]
     }
     
-    currentMessages.value = []
+    // 获取简历分析结果
+    const analysisResponse = await fetch(`${BASE_URL}/ai/pdf/analysis/${currentChatId.value}`)
+    if (!analysisResponse.ok) throw new Error('获取分析结果失败')
     
-    currentMessages.value.push({
-      role: 'assistant',
-      content: `已上传简历文件: ${file.name}。您可以开始提问了。`,
-      timestamp: new Date(),
-      isMarkdown: true
-    })
+    const analysisData = await analysisResponse.json()
+    
+    // 解析后端返回的数据
+    if (analysisData.code === 1 && analysisData.data) {
+      try {
+        // 解析两层JSON字符串
+        resumeAnalysisData.value = JSON.parse(analysisData.data)
+      } catch (e) {
+        console.error('解析分析数据失败:', e)
+        resumeAnalysisData.value = null
+      }
+    }
     
   } catch (error) {
     console.error('上传失败:', error)
@@ -497,84 +437,42 @@ const handleDrop = async (event) => {
   uploadFile(file)
 }
 
-// 发送消息
-const sendMessage = async () => {
-  if (!userInput.value.trim() || isStreaming.value) return
-  
-  const userMessage = {
-    role: 'user',
-    content: userInput.value,
-    timestamp: new Date()
-  }
-  currentMessages.value.push(userMessage)
-  
-  const input = userInput.value
-  userInput.value = ''
-  if (inputRef.value) {
-    inputRef.value.style.height = 'auto'
-  }
-  
-  await scrollToBottom()
-  
-  const assistantMessageIndex = currentMessages.value.length
-  currentMessages.value.push({
-    role: 'assistant',
-    content: '',
-    timestamp: new Date(),
-    isMarkdown: true
-  })
-  
-  try {
-    isStreaming.value = true
-    
-    // 发送请求到服务器
-    const reader = await chatAPI.sendPdfMessage(input, currentChatId.value)
-    const decoder = new TextDecoder()
-    let result = ''
-    
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      
-      const chunk = decoder.decode(value, { stream: true })
-      result += chunk
-      
-      currentMessages.value[assistantMessageIndex] = {
-        role: 'assistant',
-        content: result,
-        timestamp: new Date(),
-        isMarkdown: true
-      }
-      
-      await nextTick()
-      await scrollToBottom()
-    }
-    
-  } catch (error) {
-    console.error('发送消息失败:', error)
-    currentMessages.value[assistantMessageIndex] = {
-      role: 'assistant',
-      content: '发送消息失败，请重试。',
-      timestamp: new Date(),
-      isMarkdown: true
-    }
-  } finally {
-    isStreaming.value = false
-    await scrollToBottom()
-  }
-}
-
-// 监听输入变化
-watch(userInput, () => {
-  adjustTextareaHeight()
-})
-
 // 初始化
 onMounted(() => {
   loadChatHistory()
-  adjustTextareaHeight()
 })
 </script>
+
+<style scoped lang="scss">
+
+.score-fill {
+  &.red {
+    background-color: #ef4444;
+  }
+  
+  &.yellow {
+    background-color: #eab308;
+  }
+  
+  &.green {
+    background-color: #22c55e;
+  }
+  
+  &.purple {
+    background-color: #8b5cf6;
+  }
+}
+
+/* 确保建议卡片有足够的间距 */
+.suggestion-card {
+  min-height: 120px;
+}
+
+/* 确保关键指标项有足够的间距 */
+.metric-item {
+  margin-bottom: 1rem;
+}
+</style>
 
 <style scoped lang="scss">
 .resume-assistant {
