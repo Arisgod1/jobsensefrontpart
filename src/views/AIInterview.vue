@@ -1,5 +1,6 @@
 <template>
   <div class="interview-container">
+    <!-- 界面部分保持不变 -->
     <div class="header">
       <h1><i class="fas fa-robot"></i> AI模拟面试系统</h1>
       <div class="header-buttons">
@@ -64,6 +65,17 @@
             <button class="btn danger" @click="stopInterview">
               <i class="fas fa-stop mr-2"></i> 结束面试
             </button>
+          </div>
+          
+          <!-- 添加缓冲区状态指示器 -->
+          <div class="buffer-indicator">
+            <div>缓冲区状态：<span id="bufferStatus">{{ bufferStatus }}</span></div>
+            <div class="progress-container">
+              <div class="progress-bar" :style="{width: bufferProgress + '%'}"></div>
+            </div>
+            <div style="font-size: 12px; margin-top: 5px; color: #aaa;">
+              当前缓冲区大小: 8192字节 (发送间隔约170ms)
+            </div>
           </div>
           
           <div class="ws-status" :class="wsStatusClass">
@@ -257,6 +269,25 @@ export default {
       interviewStatusTime: '等待开始',
       progress: 0,
       
+      // 新添加的音频状态变量
+      audioContext: null,
+      recorder: null,
+      stream: null,
+      ws: null,
+      audioBuffer: null,
+      bufferIndex: 0,
+      recordedPcmChunks: [],
+      bufferStatus: '空闲',
+      bufferProgress: 0,
+      connectionAttempts: 0,
+      isReconnecting: false,
+      maxReconnectAttempts: 5,
+      lastSendTime: 0,
+      
+      // 音频参数
+      sampleRate: 48000,
+      BUFFER_SIZE: 4096, // 8192字节缓冲区(4096样本)
+      
       // 情绪分析数据
       emotions: {
         confidence: 12,
@@ -292,20 +323,8 @@ export default {
         }
       ],
       
-      // 媒体与WebSocket对象
-      mediaStream: null,
-      audioContext: null,
-      processor: null,
-      ws: null,
-      audioDataChunks: [],
-      timerInterval: null,
-      sendInterval: null,
-      
       // WebSocket配置
       wsEndpoint: 'wss://ai-interview-service.example.com/ws', // 替换为您的WebSocket服务器地址
-      sampleRate: 16000,
-      bufferSize: 4096,
-      lastQuestion: ""
     };
   },
   computed: {
@@ -359,13 +378,19 @@ export default {
       
       try {
         // 请求摄像头和麦克风权限
-        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        this.stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true
+          audio: {
+            channelCount: 1,
+            sampleRate: this.sampleRate,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
         });
         
         // 启动视频流
-        this.$refs.videoFeed.srcObject = this.mediaStream;
+        this.$refs.videoFeed.srcObject = this.stream;
         this.$refs.videoFeed.style.display = 'block';
         this.cameraEnabled = true;
         
@@ -386,6 +411,7 @@ export default {
         this.ws = new WebSocket(this.wsEndpoint);
         this.ws.binaryType = 'arraybuffer';
         this.wsStatus = 'connecting';
+        this.connectionAttempts++;
         
         // WebSocket事件处理
         this.ws.onopen = () => {
@@ -393,6 +419,8 @@ export default {
           this.wsStatus = 'connected';
           this.wsMessagesSent = 0;
           this.audioDataSent = 0;
+          this.connectionAttempts = 0;
+          this.isReconnecting = false;
           
           // 初始化音频处理
           this.setupAudioProcessing();
@@ -417,7 +445,7 @@ export default {
             // 处理文本消息（新问题）
             this.handleQuestionMessage(event.data);
           } else {
-            // 处理二进制消息（这里不处理音频）
+            // 处理二进制消息
             console.log('收到二进制数据:', event.data.byteLength, 'bytes');
           }
         };
@@ -425,13 +453,28 @@ export default {
         this.ws.onerror = (error) => {
           console.error('WebSocket错误:', error);
           this.wsStatus = 'error';
+          
+          // 连接出错时自动停止录音
+          if (this.isInterviewActive) {
+            this.stopRecording();
+          }
+          
+          // 启动重连机制
+          this.handleReconnect(`连接错误: ${error.message || '未知错误'}`);
         };
         
-        this.ws.onclose = () => {
+        this.ws.onclose = (event) => {
           console.log('WebSocket连接已关闭');
           this.wsStatus = 'disconnected';
+          
+          // 连接关闭时自动停止录音
           if (this.isInterviewActive) {
-            this.stopInterview();
+            this.stopRecording();
+          }
+          
+          // 判断是否需要重连（非主动关闭且未达到最大尝试次数）
+          if (event.code !== 1000 && this.connectionAttempts < this.maxReconnectAttempts && !this.isReconnecting) {
+            this.handleReconnect(`连接已关闭，代码: ${event.code}`);
           }
         };
         
@@ -439,32 +482,119 @@ export default {
         console.error('WebSocket连接失败:', error);
         this.wsStatus = 'error';
         this.isLoading = false;
+        this.handleReconnect(`创建连接失败: ${error.message}`);
       }
     },
     
-    // 设置音频处理
+    // 处理重连逻辑
+    handleReconnect(errorMessage) {
+      if (this.isReconnecting || this.connectionAttempts > this.maxReconnectAttempts) return;
+      
+      this.isReconnecting = true;
+      
+      // 指数退避重连策略
+      const reconnectDelay = Math.min(30000, 1000 * Math.pow(2, this.connectionAttempts - 1)); // 最大30秒延迟
+      console.log(`将在 ${reconnectDelay / 1000} 秒后尝试重连 (${this.connectionAttempts}/${this.maxReconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.connectWebSocket();
+        this.isReconnecting = false;
+      }, reconnectDelay);
+    },
+    
+    // 设置音频处理 (基于第一个文档的逻辑)
     async setupAudioProcessing() {
       try {
         // 创建音频上下文
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: this.sampleRate });
         
-        // 创建脚本处理器处理原始音频数据
-        this.processor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1);
-        source.connect(this.processor);
-        this.processor.connect(this.audioContext.destination);
+        // 创建音频源
+        const source = this.audioContext.createMediaStreamSource(this.stream);
         
-        // 处理音频数据
-        this.processor.onaudioprocess = (event) => {
-          if (!this.isInterviewActive || !this.isRecording || this.wsStatus !== 'connected') return;
+        // 用于累积音频数据的缓冲区
+        this.audioBuffer = new Float32Array(this.BUFFER_SIZE);
+        this.bufferIndex = 0;
+        this.recordedPcmChunks = [];
+        this.bufferProgress = 0;
+        this.bufferStatus = '空闲';
+        
+        // 创建音频处理器（用于PCM数据采集）
+        this.recorder = this.audioContext.createScriptProcessor(this.BUFFER_SIZE, 1, 1);
+        
+        this.recorder.onaudioprocess = (event) => {
+          // 检查录音状态和连接状态
+          if (!this.isInterviewActive || !this.stream || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+          }
           
-          // 获取PCM数据
-          const inputData = event.inputBuffer.getChannelData(0);
-          const pcmData = this.convertFloat32ToInt16(inputData);
+          // 获取音频数据
+          const inputBuffer = event.inputBuffer;
+          const inputData = inputBuffer.getChannelData(0);
+          const availableSpace = this.BUFFER_SIZE - this.bufferIndex;
+          const copyLength = Math.min(inputData.length, availableSpace);
           
-          // 存储数据
-          this.audioDataChunks.push(pcmData);
+          // 将数据复制到累积缓冲区
+          this.audioBuffer.set(inputData, this.bufferIndex);
+          this.bufferIndex += inputData.length;
+          
+          // 更新缓冲区状态
+          const fillPercentage = Math.min(100, Math.max(0, (this.bufferIndex / this.BUFFER_SIZE) * 100));
+          this.bufferProgress = fillPercentage;
+          
+          if (this.bufferIndex === 0) {
+            this.bufferStatus = '空闲';
+          } else if (this.bufferIndex < this.BUFFER_SIZE) {
+            this.bufferStatus = `填充中 (${Math.round(fillPercentage)}%)`;
+          } else {
+            this.bufferStatus = '已满 - 准备发送';
+          }
+          
+          // 当缓冲区填充50%以上时发送数据
+          if (this.bufferIndex >= this.BUFFER_SIZE * 0.5) {
+            const sendBufferSize = Math.min(this.bufferIndex, this.BUFFER_SIZE);
+            const buffer = new Int16Array(sendBufferSize);
+            
+            // 转换数据为16位PCM格式
+            for (let i = 0; i < sendBufferSize; i++) {
+              let s = Math.max(-1, Math.min(1, this.audioBuffer[i]));
+              buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            // 保存录制的PCM数据
+            this.recordedPcmChunks.push(new Int16Array(buffer));
+            
+            try {
+              this.lastSendTime = new Date().getTime();
+              this.ws.send(buffer.buffer);
+              
+              // 更新统计数据
+              this.audioDataSent += Math.round(buffer.byteLength / 1024);
+              this.wsMessagesSent++;
+              
+            } catch (error) {
+              console.error('发送错误:', error);
+            }
+            
+            // 处理剩余数据
+            if (sendBufferSize < this.BUFFER_SIZE) {
+              const remainingData = new Float32Array(this.BUFFER_SIZE - sendBufferSize);
+              remainingData.set(this.audioBuffer.subarray(sendBufferSize, this.BUFFER_SIZE));
+              this.audioBuffer = remainingData;
+              this.bufferIndex = this.BUFFER_SIZE - sendBufferSize;
+            } else {
+              this.bufferIndex = 0;
+              this.audioBuffer = new Float32Array(this.BUFFER_SIZE);
+            }
+            
+            // 更新缓冲区状态
+            const newFillPercentage = Math.min(100, Math.max(0, (this.bufferIndex / this.BUFFER_SIZE) * 100));
+            this.bufferProgress = newFillPercentage;
+          }
         };
+        
+        // 连接处理器
+        source.connect(this.recorder);
+        this.recorder.connect(this.audioContext.destination);
         
       } catch (error) {
         console.error('音频处理初始化失败:', error);
@@ -488,43 +618,6 @@ export default {
           this.updateAiStatus();
         }
       }, 1000);
-      
-      // 数据发送计时器
-      this.sendInterval = setInterval(() => {
-        if (this.isInterviewActive && this.isRecording && this.wsStatus === 'connected') {
-          this.sendAudioData();
-        }
-      }, 200);
-    },
-    
-    // 发送音频数据
-    sendAudioData() {
-      if (this.audioDataChunks.length === 0 || !this.ws) return;
-      
-      try {
-        // 合并所有音频块
-        const totalLength = this.audioDataChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
-        const combinedBuffer = new Int16Array(totalLength / 2);
-        
-        let offset = 0;
-        this.audioDataChunks.forEach(chunk => {
-          combinedBuffer.set(new Int16Array(chunk), offset);
-          offset += chunk.byteLength / 2;
-        });
-        
-        // 发送数据
-        this.ws.send(combinedBuffer.buffer);
-        
-        // 更新统计数据
-        this.audioDataSent += Math.round(totalLength / 1024);
-        this.wsMessagesSent++;
-        
-        // 清空缓存
-        this.audioDataChunks = [];
-        
-      } catch (error) {
-        console.error('发送音频数据失败:', error);
-      }
     },
     
     // 处理问题消息
@@ -640,35 +733,60 @@ export default {
       ];
     },
     
+    // 停止录音 - 使用第一个文档的逻辑
+    stopRecording() {
+      // 1. 立即停止数据处理
+      this.isInterviewActive = false;
+      this.isRecording = false;
+      
+      // 2. 清除音频处理器
+      if (this.recorder) {
+        // 移除事件监听器
+        this.recorder.onaudioprocess = null;
+        this.recorder.disconnect();
+        this.recorder = null;
+      }
+      
+      // 3. 释放媒体资源
+      if (this.stream) {
+        this.stream.getTracks().forEach(track => track.stop());
+        this.stream = null;
+      }
+      
+      // 4. 关闭音频上下文
+      if (this.audioContext) {
+        this.audioContext.close().then(() => {
+          console.log('音频上下文已关闭');
+          this.audioContext = null;
+        });
+      }
+      
+      // 5. 更新UI状态
+      this.cameraStatus = '已结束';
+      this.interviewStatusTime = '已完成';
+      this.aiStatus = '离线';
+      this.aiSubStatus = '面试结束';
+      
+      // 6. 清理定时器
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+      }
+      
+      // 7. 重置缓冲区状态
+      this.bufferStatus = '空闲';
+      this.bufferProgress = 0;
+    },
+    
     // 结束面试
     stopInterview() {
-      // 清理定时器
-      clearInterval(this.timerInterval);
-      clearInterval(this.sendInterval);
-      
       // 发送结束消息
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.sendControlMessage('stop');
         this.ws.close();
       }
       
-      // 停止媒体流
-      if (this.mediaStream) {
-        this.mediaStream.getTracks().forEach(track => track.stop());
-      }
-      
-      // 断开音频处理器
-      if (this.processor) {
-        this.processor.disconnect();
-      }
-      
-      // 重置状态
-      this.isInterviewActive = false;
-      this.isRecording = false;
-      this.cameraStatus = '已结束';
-      this.interviewStatusTime = '已完成';
-      this.aiStatus = '离线';
-      this.aiSubStatus = '面试结束';
+      // 停止录音
+      this.stopRecording();
       
       // 显示提示
       alert('面试已结束！数据已保存');
@@ -677,8 +795,8 @@ export default {
     // 切换静音状态
     toggleMute() {
       this.isMuted = !this.isMuted;
-      if (this.mediaStream) {
-        this.mediaStream.getAudioTracks().forEach(track => {
+      if (this.stream) {
+        this.stream.getAudioTracks().forEach(track => {
           track.enabled = !this.isMuted;
         });
       }
@@ -687,35 +805,54 @@ export default {
     // 切换摄像头状态
     toggleCamera() {
       this.cameraEnabled = !this.cameraEnabled;
-      if (this.mediaStream) {
-        this.mediaStream.getVideoTracks().forEach(track => {
+      if (this.stream) {
+        this.stream.getVideoTracks().forEach(track => {
           track.enabled = this.cameraEnabled;
         });
       }
       this.$refs.videoFeed.style.display = this.cameraEnabled ? 'block' : 'none';
-    },
-    
-    // 将Float32音频数据转换为Int16 PCM格式
-    convertFloat32ToInt16(buffer) {
-      const length = buffer.length;
-      const int16Buffer = new Int16Array(length);
-      for (let i = 0; i < length; i++) {
-        const s = Math.max(-1, Math.min(1, buffer[i]));
-        int16Buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-      }
-      return int16Buffer;
     }
   },
   beforeDestroy() {
     // 组件销毁前清理资源
-    if (this.isInterviewActive) {
-      this.stopInterview();
+    this.stopInterview();
+    
+    // 清理重连定时器
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
     }
   }
 };
 </script>
 
 <style scoped>
+/* 添加缓冲区指示器样式 */
+.buffer-indicator {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.progress-container {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #64b5f6;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* 其他样式保持不变 */
 .interview-container {
   max-width: 1400px;
   margin: 0 auto;
@@ -1029,8 +1166,7 @@ video {
 }
 
 .progress-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 1.5rem;
 }
 
