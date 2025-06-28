@@ -2,7 +2,14 @@
   <div class="resume-assistant" :class="{ 'dark': isDark }">
     <div class="header">
       <h1>简历智能评估</h1>
-      
+      <div class="header-buttons">
+        <button class="btn secondary" @click="toggleHistory">
+          <i class="fas fa-history mr-2"></i> 历史记录
+        </button>
+        <button class="btn primary" @click="startNewChat">
+          <i class="fas fa-plus mr-2"></i> 新对话
+        </button>
+      </div>
     </div>
 
     <div class="main-container">
@@ -77,73 +84,161 @@
           <!-- 简历评估结果 -->
           <div class="card assessment-card">
             <div class="section-header">
-        <h2>简历分析</h2>
-        <div class="status-badge">
-          <i class="fas fa-check-circle mr-1"></i> 分析完成
-        </div>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-header">
-            <h4>综合评分</h4>
-            <span class="score">{{ overallScore }}</span>
-          </div>
-          <div class="score-bar">
-            <div class="score-fill" :style="{ width: overallScorePercentage + '%' }"></div>
-          </div>
-          <p class="metric-description">{{ overallEvaluation }}</p>
-        </div>
-
-        <div class="metric-card">
-          <h4 class="metric-title">关键指标</h4>
-          <div class="metrics-list">
-            <div 
-              v-for="(score, metric) in keyMetrics" 
-              :key="metric" 
-              class="metric-item"
-            >
-              <div class="metric-label">
-                <span>{{ metric }}</span>
-                <span>{{ score }}</span>
-              </div>
-              <div class="score-bar">
-                <div 
-                  class="score-fill" 
-                  :class="getMetricColorClass(metric)" 
-                  :style="{ width: getMetricPercentage(score) + '%' }"
-                ></div>
+              <h2>简历分析</h2>
+              <div class="status-badge">
+                <i class="fas fa-check-circle mr-1"></i> 分析完成
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <h2 class="section-title">改进建议</h2>
-      <div class="suggestions-grid">
-        <div 
-          v-for="(suggestion, index) in suggestions" 
-          :key="index" 
-          class="suggestion-card"
-        >
-          <div class="suggestion-header">
-            <div class="icon-bg" :class="getSuggestionColorClass(index)">
-              <i :class="getSuggestionIcon(index)"></i>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-header">
+                  <h4>综合评分</h4>
+                  <span class="score">78/100</span>
+                </div>
+                <div class="score-bar">
+                  <div class="score-fill" style="width: 78%"></div>
+                </div>
+                <p class="metric-description">您的简历良好，但在结构和影响力方面还有改进空间。</p>
+              </div>
+
+              <div class="metric-card">
+                <h4 class="metric-title">关键指标</h4>
+                <div class="metrics-list">
+                  <div class="metric-item">
+                    <div class="metric-label">
+                      <span>清晰度</span>
+                      <span>65/100</span>
+                    </div>
+                    <div class="score-bar">
+                      <div class="score-fill yellow" style="width: 65%"></div>
+                    </div>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-label">
+                      <span>相关性</span>
+                      <span>82/100</span>
+                    </div>
+                    <div class="score-bar">
+                      <div class="score-fill green" style="width: 82%"></div>
+                    </div>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-label">
+                      <span>影响力</span>
+                      <span>71/100</span>
+                    </div>
+                    <div class="score-bar">
+                      <div class="score-fill purple" style="width: 71%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h4>{{ suggestion.标题 }}</h4>
-          </div>
-          <p>{{ suggestion.内容 }}</p>
-        </div>
-      </div>
-    </div>
+
+            <h2 class="section-title">改进建议</h2>
+            <div class="suggestions-grid">
+              <div class="suggestion-card">
+                <div class="suggestion-header">
+                  <div class="icon-bg blue">
+                    <i class="fas fa-bullseye"></i>
+                  </div>
+                  <h4>量化成就</h4>
+                </div>
+                <p>为工作经历添加具体指标（例如"销售额提升30%"）</p>
+              </div>
+              <div class="suggestion-card">
+                <div class="suggestion-header">
+                  <div class="icon-bg purple">
+                    <i class="fas fa-align-left"></i>
+                  </div>
+                  <h4>简化语言</h4>
+                </div>
+                <p>用更清晰、直接的语言替换复杂的表达</p>
+              </div>
+              <div class="suggestion-card">
+                <div class="suggestion-header">
+                  <div class="icon-bg green">
+                    <i class="fas fa-sitemap"></i>
+                  </div>
+                  <h4>优化结构</h4>
+                </div>
+                <p>重新组织段落，优先展示最相关的经验</p>
+              </div>
+              <div class="suggestion-card">
+                <div class="suggestion-header">
+                  <div class="icon-bg yellow">
+                    <i class="fas fa-magic"></i>
+                  </div>
+                  <h4>ATS优化</h4>
+                </div>
+                <p>添加更多职位描述中的关键词以通过自动筛选系统</p>
+              </div>
+              <div class="suggestion-card">
+                <div class="suggestion-header">
+                  <div class="icon-bg red">
+                    <i class="fas fa-broom"></i>
+                  </div>
+                  <h4>移除无关信息</h4>
+                </div>
+                <p>删除与职业目标无关的爱好和过时经历</p>
+              </div>
+              <div class="suggestion-card">
+                <div class="suggestion-header">
+                  <div class="icon-bg indigo">
+                    <i class="fas fa-graduation-cap"></i>
+                  </div>
+                  <h4>教育部分</h4>
+                </div>
+                <p>除非是应届毕业生，否则将教育经历放在较后位置</p>
+              </div>
+            </div>
           </div>
 
           <!-- 聊天区域 -->
-         
+          <div class="card chat-card">
+            <div class="chat-header">
+              <h2>简历问答</h2>
+            </div>
+            
+            <div class="messages" ref="messagesRef">
+              <div v-for="(message, index) in currentMessages" :key="index" class="message-bubble">
+                <div class="message-avatar" :class="message.role">
+                  <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
+                </div>
+                <div class="message-content">
+                  <div v-if="message.isMarkdown" v-html="DOMPurify.sanitize(marked.parse(message.content))"></div>
+                  <template v-else>
+                    {{ message.content }}
+                  </template>
+                  <div class="message-time">
+                    {{ formatTime(message.timestamp) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="input-area">
+              <textarea
+                v-model="userInput"
+                @keydown.enter.prevent="sendMessage()"
+                placeholder="请输入您的问题..."
+                rows="1"
+                ref="inputRef"
+              ></textarea>
+              <button 
+                class="send-button" 
+                @click="sendMessage()"
+                :disabled="isStreaming || !userInput.trim()"
+              >
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  
+  </div>
 </template>
 
 <script setup>
@@ -171,86 +266,7 @@ const uploadingFileName = ref('')
 const errorMessage = ref('')
 const showHistory = ref(false)
 const BASE_URL = 'http://localhost:8080'
-const assessmentResult = ref(null)
-const overallScore = ref('')
-const overallEvaluation = ref('')
-const overallScorePercentage = ref(0)
-const keyMetrics = ref({})
-const suggestions = ref([])
 
-// 解析评估结果
-const parseAssessmentData = (data) => {
-  try {
-    // 确保data是字符串时才解析
-    const jsonData = typeof data === 'string' ? JSON.parse(data) : data
-    
-    // 设置综合评分
-    if (jsonData.综合评分) {
-      overallScore.value = jsonData.综合评分.得分
-      overallEvaluation.value = jsonData.综合评分.评价
-      
-      // 提取分数值用于进度条
-      const scoreMatch = overallScore.value.match(/(\d+)\/100/)
-      if (scoreMatch && scoreMatch[1]) {
-        overallScorePercentage.value = parseInt(scoreMatch[1])
-      }
-    }
-    
-    // 设置关键指标
-    if (jsonData.关键指标) {
-      keyMetrics.value = jsonData.关键指标
-    }
-    
-    // 设置改进建议
-    if (jsonData.改进建议 && Array.isArray(jsonData.改进建议)) {
-      suggestions.value = jsonData.改进建议
-    }
-    
-  } catch (error) {
-    console.error('解析评估结果失败:', error)
-    // 设置默认错误消息
-    overallScore.value = '0/100'
-    overallEvaluation.value = '解析评估结果时出错'
-    overallScorePercentage.value = 0
-    keyMetrics.value = {}
-    suggestions.value = []
-  }
-}
-
-// 根据指标名称获取颜色类
-const getMetricColorClass = (metric) => {
-  const colorMap = {
-    '清晰度': 'yellow',
-    '相关性': 'green',
-    '影响力': 'purple'
-  }
-  return colorMap[metric] || ''
-}
-
-// 根据指标分数计算百分比
-const getMetricPercentage = (score) => {
-  const match = score.match(/(\d+)\/100/)
-  return match && match[1] ? parseInt(match[1]) : 0
-}
-
-// 根据建议索引获取颜色类
-const getSuggestionColorClass = (index) => {
-  const colors = ['blue', 'purple', 'green', 'yellow', 'red', 'indigo']
-  return colors[index % colors.length] || 'blue'
-}
-
-// 根据建议索引获取图标
-const getSuggestionIcon = (index) => {
-  const icons = [
-    'fas fa-bullseye',
-    'fas fa-align-left',
-    'fas fa-sitemap',
-    'fas fa-magic',
-    'fas fa-broom',
-    'fas fa-graduation-cap'
-  ]
-  return icons[index % icons.length] || 'fas fa-info-circle'
-}
 // 配置 marked
 marked.setOptions({
   breaks: true,
@@ -453,9 +469,6 @@ const uploadFile = async (file) => {
       timestamp: new Date(),
       isMarkdown: true
     })
-        if (data && data.data) {
-      parseAssessmentData(data.data)
-    }
     
   } catch (error) {
     console.error('上传失败:', error)
