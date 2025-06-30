@@ -253,7 +253,7 @@ const getPlaceholder = () => {
     const desc = FILE_LIMITS[type].description
     return `已选择 ${selectedFiles.value.length} 个${desc}，可继续输入消息...`
   }
-  return '输入消息，可上传图片、音频或视频...'
+  return '输入消息...'
 }
 
 // 修改发送消息函数

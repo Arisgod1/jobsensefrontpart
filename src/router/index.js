@@ -13,11 +13,6 @@ const routes = [
   },
   
   {
-    path: '/chat-pdf',
-    name: 'ChatPDF',
-    component: () => import('../views/ChatPDF.vue')
-  },
-  {
     path: '/AIInterview',
     name: 'AIInterview',
     component: () => import('../views/AIInterview.vue')
