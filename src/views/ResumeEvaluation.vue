@@ -2,7 +2,11 @@
   <div class="resume-assistant" :class="{ 'dark': isDark }">
     <div class="header">
       <h1>简历智能评估</h1>
-      
+       <div class="header-buttons"> 
+         <button class="btn secondary" @click="toggleHistory">
+          <i class="fas fa-history mr-1"></i> 历史记录
+         </button>
+      </div>
     </div>
 
     <div class="main-container">

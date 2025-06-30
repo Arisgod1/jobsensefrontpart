@@ -1,8 +1,8 @@
 <template>
   <div class="interview-container">
-    
+    <!-- 头部区域 -->
     <div class="header">
-      <h1><i class="fas fa-robot"></i> Java工程师模拟面试</h1>
+      <h1><i class="fas fa-robot"></i> AI模拟面试系统</h1>
       <div class="header-buttons">
         <button class="btn secondary">
           <i class="fas fa-cog mr-2"></i> 设置
@@ -13,38 +13,46 @@
       </div>
     </div>
 
+    <!-- 主内容区域 -->
     <div class="grid-layout">
+      <!-- 左侧列 -->
       <div class="left-column">
-        <div class="interview-card">
-          <div class="card-header">
-            <h2><i class="fas fa-comments mr-2"></i> 模拟面试</h2>
+        <!-- 音频区域 -->
+        <div class="camera-card">
+          <div class="camera-header">
+            <h2><i class="fas fa-microphone"></i> 音频状态</h2>
             <div class="status-indicator">
-              <span>{{ interviewStatus }}</span>
+              <span>{{ audioStatus }}</span>
               <div class="status-dot" :class="{ recording: isInterviewActive }"></div>
             </div>
           </div>
           
-          <div class="question-display">
-            <div v-if="!isInterviewActive" class="interview-placeholder">
-              <div class="interview-icon">
-                <i class="fas fa-user-tie"></i>
-              </div>
-              <p>点击"开始面试"按钮启动模拟面试</p>
+          <!-- 音频可视化 -->
+          <div class="audio-visualization">
+            <div class="audio-visualizer" :class="{ active: isInterviewActive }">
+              <div v-for="(bar, index) in visualizerBars" 
+                   :key="index" 
+                   class="bar" 
+                   :style="{ height: bar.height + 'px' }"></div>
             </div>
-            <div v-else>
-              <div class="interview-progress">
-                问题 {{ currentQuestionIndex + 1 }} / 5
+            <div class="audio-placeholder" v-if="!isInterviewActive">
+              <div class="audio-icon">
+                <i class="fas fa-microphone"></i>
               </div>
-              <div class="question-content">
-                {{ currentQuestion }}
-              </div>
+              <p>面试开始后麦克风将启动</p>
+            </div>
+            <div v-else class="status-overlay">
+              <i class="fas fa-circle"></i> 
+              <span>{{ isRecording ? '录制中' : '暂停中' }}</span>
             </div>
           </div>
           
+          <!-- 计时器 -->
           <div v-if="isInterviewActive" class="recording-timer">
             <i class="fas fa-clock mr-2"></i> {{ formatTime(timer) }}
           </div>
           
+          <!-- 开始按钮 -->
           <div class="start-button-container">
             <button v-if="!isInterviewActive" 
                     class="btn success" 
@@ -56,30 +64,41 @@
             </button>
           </div>
           
-          <div class="interview-controls" v-if="isInterviewActive">
-            <button class="btn secondary" @click="toggleAnswering" :disabled="!isInterviewActive || wsStatus !== 'connected'">
-              <i v-if="isAnswering" class="fas fa-stop mr-2"></i>
-              <i v-else class="fas fa-microphone mr-2"></i>
-              {{ isAnswering ? '停止回答' : '开始回答' }}
-            </button>
-            <button class="btn secondary" @click="repeatQuestion">
-              <i class="fas fa-redo mr-2"></i> 重复问题
+          <!-- 音频控制 -->
+          <div class="camera-controls" v-if="isInterviewActive">
+            <button class="btn secondary" @click="toggleMute">
+              <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i> 
+              {{ isMuted ? '取消静音' : '静音' }}
             </button>
             <button class="btn danger" @click="stopInterview">
               <i class="fas fa-stop mr-2"></i> 结束面试
             </button>
           </div>
           
+          <!-- 缓冲区状态 -->
+          <div class="buffer-indicator">
+            <div>缓冲区状态：<span id="bufferStatus">{{ bufferStatus }}</span></div>
+            <div class="progress-container">
+              <div class="progress-bar" :style="{width: bufferProgress + '%'}"></div>
+            </div>
+            <div style="font-size: 12px; margin-top: 5px; color: #aaa;">
+              当前缓冲区大小: 8192字节 (发送间隔约170ms)
+            </div>
+          </div>
+          
+          <!-- WebSocket状态 -->
           <div class="ws-status" :class="wsStatusClass">
             <i class="fas" :class="wsStatusIcon"></i> {{ wsStatusText }}
           </div>
           
+          <!-- 数据统计 -->
           <div v-if="isInterviewActive" class="sent-data-info">
             <p><i class="fas fa-database mr-2"></i> 已发送音频: {{ audioDataSent }} KB</p>
             <p><i class="fas fa-cloud-upload-alt mr-2"></i> WebSocket状态: {{ wsMessagesSent }} 条消息</p>
           </div>
         </div>
 
+        <!-- 面试进度 -->
         <div class="progress-card">
           <h2><i class="fas fa-tasks mr-2"></i> 面试进度</h2>
           <div class="progress-list">
@@ -118,7 +137,9 @@
         </div>
       </div>
 
+      <!-- 右侧列 -->
       <div class="right-column">
+        <!-- 情绪分析 -->
         <div class="emotion-card">
           <div class="card-header">
             <h2><i class="fas fa-smile-beam mr-2"></i> 情绪分析</h2>
@@ -130,7 +151,7 @@
             <div class="metric-item">
               <div class="metric-label">
                 <span>自信度</span>
-                <span>{{ emotions.confidence.toFixed(4) }}%</span>
+                <span>{{ emotions.confidence }}%</span>
               </div>
               <div class="emotion-bar">
                 <div class="emotion-fill blue" :style="{ width: emotions.confidence + '%' }"></div>
@@ -139,7 +160,7 @@
             <div class="metric-item">
               <div class="metric-label">
                 <span>参与度</span>
-                <span>{{ emotions.engagement.toFixed(4) }}%</span>
+                <span>{{ emotions.engagement }}%</span>
               </div>
               <div class="emotion-bar">
                 <div class="emotion-fill green" :style="{ width: emotions.engagement + '%' }"></div>
@@ -148,7 +169,7 @@
             <div class="metric-item">
               <div class="metric-label">
                 <span>紧张度</span>
-                <span>{{ emotions.nervousness.toFixed(4) }}%</span>
+                <span>{{ emotions.nervousness }}%</span>
               </div>
               <div class="emotion-bar">
                 <div class="emotion-fill yellow" :style="{ width: emotions.nervousness + '%' }"></div>
@@ -157,7 +178,7 @@
             <div class="metric-item">
               <div class="metric-label">
                 <span>积极性</span>
-                <span>{{ emotions.enthusiasm.toFixed(4) }}%</span>
+                <span>{{ emotions.enthusiasm }}%</span>
               </div>
               <div class="emotion-bar">
                 <div class="emotion-fill purple" :style="{ width: emotions.enthusiasm + '%' }"></div>
@@ -170,12 +191,13 @@
           </div>
         </div>
 
+        <!-- 问题区域 -->
         <div class="question-card">
           <div class="card-header">
             <h2><i class="fas fa-question-circle mr-2"></i> 当前问题</h2>
             <div class="thinking-indicator">
               <span class="status-badge" :class="isInterviewActive ? 'blue' : ''">
-                {{ isInterviewActive ? (isAnswering ? '回答中' : '请回答') : '等待开始' }}
+                {{ isInterviewActive ? '思考中' : '等待开始' }}
               </span>
               <div class="status-dot" :class="isInterviewActive ? 'blue' : ''"></div>
             </div>
@@ -190,8 +212,14 @@
           <button class="btn secondary full-width" :disabled="!isInterviewActive" @click="repeatQuestion">
             <i class="fas fa-redo mr-2"></i> 重复问题
           </button>
+          <button class="btn primary full-width" @click="toggleAnswering" :disabled="!isInterviewActive || wsStatus !== 'connected'">
+            <i v-if="isAnswering" class="fas fa-stop mr-2"></i>
+            <i v-else class="fas fa-microphone mr-2"></i>
+            {{ isAnswering ? '停止回答' : '开始回答' }}
+          </button>
         </div>
 
+        <!-- AI状态 -->
         <div class="ai-status-card">
           <h2><i class="fas fa-brain mr-2"></i> AI分析状态</h2>
           <div class="status-visual">
@@ -226,6 +254,7 @@
           </div>
         </div>
 
+        <!-- 实时反馈 -->
         <div class="feedback-card">
           <h2><i class="fas fa-comment-medical mr-2"></i> 实时反馈</h2>
           <div class="feedback-items">
@@ -239,141 +268,35 @@
         </div>
       </div>
     </div>
-    
-    <!-- 面试总结报告显示在页面底部 -->
-    <div v-if="showSummary" class="summary-container">
-      <h2><i class="fas fa-file-alt mr-2"></i> 面试总结报告</h2>
-      <div class="summary-content">
-        <div class="summary-card">
-          <div class="summary-header">
-            <div class="summary-icon">
-              <i class="fas fa-file-medical-alt"></i>
-            </div>
-            <div>
-              <h3>Java工程师模拟面试报告</h3>
-              <p>面试时间: {{ interviewSummary.date }}</p>
-              <p>持续时间: {{ interviewSummary.duration }} 分钟</p>
-            </div>
-          </div>
-          
-          <div class="performance-stats">
-            <div class="stat-box">
-              <div class="stat-value">{{ interviewSummary.totalQuestions }}</div>
-              <div class="stat-label">问题数量</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-value">{{ interviewSummary.answeredQuestions }}</div>
-              <div class="stat-label">已回答问题</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-value">{{ interviewSummary.avgAnswerTime }}s</div>
-              <div class="stat-label">平均回答时间</div>
-            </div>
-            <div class="stat-box">
-              <div class="stat-value">{{ interviewSummary.overallScore }}/10</div>
-              <div class="stat-label">综合评分</div>
-            </div>
-          </div>
-          
-          <div class="emotion-overview">
-            <h4>情绪表现分析</h4>
-            <div class="emotion-grid">
-              <div class="emotion-item">
-                <div class="emotion-title">
-                  <i class="fas fa-smile blue"></i>
-                  <span>自信度</span>
-                </div>
-                <div class="emotion-value">{{ interviewSummary.confidence.toFixed(4) }}%</div>
-              </div>
-              <div class="emotion-item">
-                <div class="emotion-title">
-                  <i class="fas fa-brain green"></i>
-                  <span>参与度</span>
-                </div>
-                <div class="emotion-value">{{ interviewSummary.engagement.toFixed(4) }}%</div>
-              </div>
-              <div class="emotion-item">
-                <div class="emotion-title">
-                  <i class="fas fa-flushed yellow"></i>
-                  <span>紧张度</span>
-                </div>
-                <div class="emotion-value">{{ interviewSummary.nervousness.toFixed(4) }}%</div>
-              </div>
-              <div class="emotion-item">
-                <div class="emotion-title">
-                  <i class="fas fa-star purple"></i>
-                  <span>积极性</span>
-                </div>
-                <div class="emotion-value">{{ interviewSummary.enthusiasm.toFixed(4) }}%</div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="feedback-section">
-            <h4>面试官反馈</h4>
-            <div class="feedback-content">
-              <p>{{ interviewSummary.feedback }}</p>
-            </div>
-            <div class="strengths-weaknesses">
-              <div class="strengths">
-                <h5><i class="fas fa-check-circle green"></i> 优势</h5>
-                <ul>
-                  <li v-for="(strength, index) in interviewSummary.strengths" :key="'str'+index">{{ strength }}</li>
-                </ul>
-              </div>
-              <div class="weaknesses">
-                <h5><i class="fas fa-exclamation-triangle yellow"></i> 改进方向</h5>
-                <ul>
-                  <li v-for="(weakness, index) in interviewSummary.weaknesses" :key="'wk'+index">{{ weakness }}</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          <div class="tips-section">
-            <h4>学习建议</h4>
-            <div class="tip">
-              <div class="tip-icon">
-                <i class="fas fa-book"></i>
-              </div>
-              <p>{{ interviewSummary.tip }}</p>
-            </div>
-          </div>
-          
-          <div class="actions-section">
-            <button class="btn primary">
-              <i class="fas fa-download mr-2"></i> 下载完整报告
-            </button>
-            <button class="btn secondary" @click="showSummary = false">
-              <i class="fas fa-times mr-2"></i> 关闭报告
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'JavaInterview',
+  name: 'AIInterview',
   data() {
     return {
       isInterviewActive: false,
       isLoading: false,
       isRecording: true,
-      interviewStatus: '等待开始',
+      isMuted: false,
+      audioStatus: '等待开始',
       wsStatus: 'disconnected',
-      timer: 0, // 总面试时间
-      countdown: 120, // 每个问题的倒计时 (120秒=2分钟)
+      timer: 0,
       audioDataSent: 0,
       wsMessagesSent: 0,
       deviceSetupTime: '待完成',
       interviewStatusTime: '等待开始',
       progress: 0,
       
-      // 音频状态变量
+      // 音频处理相关
       audioContext: null,
+      recorder: null,
+      stream: null,
+      ws: null,
+      audioBuffer: null,
+      bufferIndex: 0,
+      recordedPcmChunks: [],
       bufferStatus: '空闲',
       bufferProgress: 0,
       connectionAttempts: 0,
@@ -381,26 +304,20 @@ export default {
       maxReconnectAttempts: 5,
       lastSendTime: 0,
       
-      // Java工程师面试问题库
-      javaQuestions: [
-        "请介绍一下Java中的多态性以及它在实际项目中的应用。",
-        "请解释Java中的垃圾回收机制，以及如何优化垃圾回收性能？",
-        "请描述Java集合框架，并比较ArrayList和LinkedList的异同。",
-        "请解释Java中的线程安全，并举例说明如何实现线程安全。",
-        "请谈谈你对Spring框架的理解，并说明IoC和AOP的概念及其作用。"
-      ],
-      currentQuestionIndex: -1,
+      // 音频参数
+      sampleRate: 16000,
+      BUFFER_SIZE: 4096,
       
       // 情绪分析数据
       emotions: {
-        confidence: 35,
-        engagement: 45,
-        nervousness: 65,
-        enthusiasm: 40
+        confidence: 12,
+        engagement: 18,
+        nervousness: 72,
+        enthusiasm: 26
       },
       
       // 当前问题信息
-      currentQuestion: "请点击'开始面试'按钮启动Java工程师模拟面试",
+      currentQuestion: "请点击'开始面试'按钮启动AI模拟面试",
       questionType: '准备就绪',
       questionTimeLeft: '等待开始',
       
@@ -427,37 +344,18 @@ export default {
       ],
       
       // WebSocket配置
-      wsEndpoint: 'ws://localhost:8080/realtime/audio/websocket/123',
-      
+      wsEndpoint: 'wss://ai-interview-service.example.com/ws',
+       
       // 回答状态
       isAnswering: false,
       lastQuestion: "",
       
-      // 倒计时计时器
-      countdownInterval: null,
-      
-      // 面试总结相关
-      showSummary: false,
-      interviewSummary: {
-        date: '',
-        duration: 0,
-        totalQuestions: 0,
-        answeredQuestions: 0,
-        avgAnswerTime: 0,
-        overallScore: 0,
-        confidence: 0,
-        engagement: 0,
-        nervousness: 0,
-        enthusiasm: 0,
-        feedback: '',
-        strengths: [],
-        weaknesses: [],
-        tip: ''
-      }
+      // 音频可视化
+      visualizerBars: Array(12).fill().map(() => ({ height: 5 })),
+      volumeLevel: 0
     };
   },
   computed: {
-    // WebSocket状态相关计算属性
     wsStatusClass() {
       return {
         'ws-connected': this.wsStatus === 'connected',
@@ -473,7 +371,6 @@ export default {
         'WebSocket 未连接';
     },
     
-    // 进度条样式
     progressBarStyle() {
       const width = Math.min(100, Math.max(5, this.progress));
       return {
@@ -481,10 +378,8 @@ export default {
       };
     },
     
-    // 环形进度条样式
     progressRingStyle() {
       if (!this.isInterviewActive) return {};
-      
       const progress = this.listeningProgress * 2.83;
       return {
         strokeDasharray: '283',
@@ -493,14 +388,12 @@ export default {
     }
   },
   methods: {
-    // 格式化时间显示 (分钟:秒)
     formatTime(seconds) {
       const mins = Math.floor(seconds / 60);
       const secs = seconds % 60;
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     },
     
-    // 开始面试
     async startInterview() {
       this.isLoading = true;
       this.deviceSetupTime = '进行中...';
@@ -510,7 +403,7 @@ export default {
         this.stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             channelCount: 1,
-            sampleRate: 16000,
+            sampleRate: this.sampleRate,
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
@@ -528,7 +421,6 @@ export default {
       }
     },
     
-    // 连接WebSocket
     connectWebSocket() {
       try {
         this.ws = new WebSocket(this.wsEndpoint);
@@ -548,7 +440,7 @@ export default {
           // 更新状态
           this.isInterviewActive = true;
           this.isRecording = true;
-          this.interviewStatus = '面试中';
+          this.audioStatus = '录音中';
           this.isLoading = false;
           this.deviceSetupTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           this.interviewStatusTime = '进行中';
@@ -558,18 +450,39 @@ export default {
           
           // 发送开始消息
           this.sendControlMessage('start');
-          
-          // 显示第一个问题
-          this.nextQuestion();
         };
         
         this.ws.onmessage = (event) => {
-          if (typeof event.data === 'string') {
-            // 处理文本消息（新问题）
-            this.handleQuestionMessage(event.data);
-          } else {
-            // 处理二进制消息
-            console.log('收到二进制数据:', event.data.byteLength, 'bytes');
+          try {
+            // 支持文本和JSON两种格式的消息
+            let data;
+            if (typeof event.data === 'string') {
+              data = JSON.parse(event.data);
+            } else {
+              // 处理二进制数据（如果需要）
+              console.log('收到二进制数据:', event.data.byteLength, 'bytes');
+              return;
+            }
+            
+            // 根据消息类型进行处理
+            switch (data.type) {
+              case 'question':
+                this.handleQuestionMessage(data);
+                break;
+              case 'feedback':
+                this.handleFeedbackMessage(data);
+                break;
+              case 'status':
+                this.handleStatusMessage(data);
+                break;
+              case 'analysis':
+                this.handleAnalysisMessage(data);
+                break;
+              default:
+                console.warn('未知消息类型:', data.type);
+            }
+          } catch (e) {
+            console.error('处理消息失败:', e);
           }
         };
         
@@ -595,7 +508,7 @@ export default {
             this.stopRecording();
           }
           
-          // 判断是否需要重连（非主动关闭且未达到最大尝试次数）
+          // 判断是否需要重连
           if (event.code !== 1000 && this.connectionAttempts < this.maxReconnectAttempts && !this.isReconnecting) {
             this.handleReconnect(`连接已关闭，代码: ${event.code}`);
           }
@@ -609,14 +522,13 @@ export default {
       }
     },
     
-    // 处理重连逻辑
     handleReconnect(errorMessage) {
       if (this.isReconnecting || this.connectionAttempts > this.maxReconnectAttempts) return;
       
       this.isReconnecting = true;
       
       // 指数退避重连策略
-      const reconnectDelay = Math.min(30000, 1000 * Math.pow(2, this.connectionAttempts - 1)); // 最大30秒延迟
+      const reconnectDelay = Math.min(30000, 1000 * Math.pow(2, this.connectionAttempts - 1));
       console.log(`将在 ${reconnectDelay / 1000} 秒后尝试重连 (${this.connectionAttempts}/${this.maxReconnectAttempts})`);
       
       setTimeout(() => {
@@ -625,15 +537,129 @@ export default {
       }, reconnectDelay);
     },
     
-    // 开始计时器
+    setupAudioProcessing() {
+      if (!this.stream) return;
+      
+      try {
+        // 创建音频上下文
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: this.sampleRate });
+        
+        // 创建音频源
+        const source = this.audioContext.createMediaStreamSource(this.stream);
+        
+        // 用于累积音频数据的缓冲区
+        this.audioBuffer = new Float32Array(this.BUFFER_SIZE);
+        this.bufferIndex = 0;
+        this.recordedPcmChunks = [];
+        this.bufferProgress = 0;
+        this.bufferStatus = '空闲';
+        
+        // 创建音频处理器
+        this.recorder = this.audioContext.createScriptProcessor(this.BUFFER_SIZE, 1, 1);
+        
+        this.recorder.onaudioprocess = (event) => {
+          // 检查录音状态和连接状态
+          if (!this.isAnswering || !this.stream || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+          }
+          
+          // 获取音频数据
+          const inputBuffer = event.inputBuffer;
+          const inputData = inputBuffer.getChannelData(0);
+          const availableSpace = this.BUFFER_SIZE - this.bufferIndex;
+          const copyLength = Math.min(inputData.length, availableSpace);
+          
+          // 将数据复制到累积缓冲区
+          this.audioBuffer.set(inputData, this.bufferIndex);
+          this.bufferIndex += inputData.length;
+          
+          // 更新缓冲区状态
+          const fillPercentage = Math.min(100, Math.max(0, (this.bufferIndex / this.BUFFER_SIZE) * 100));
+          this.bufferProgress = fillPercentage;
+          
+          if (this.bufferIndex === 0) {
+            this.bufferStatus = '空闲';
+          } else if (this.bufferIndex < this.BUFFER_SIZE) {
+            this.bufferStatus = `填充中 (${Math.round(fillPercentage)}%)`;
+          } else {
+            this.bufferStatus = '已满 - 准备发送';
+          }
+          
+          // 当缓冲区填充50%以上时发送数据
+          if (this.bufferIndex >= this.BUFFER_SIZE * 0.5) {
+            const sendBufferSize = Math.min(this.bufferIndex, this.BUFFER_SIZE);
+            const buffer = new Int16Array(sendBufferSize);
+            
+            // 转换数据为16位PCM格式
+            for (let i = 0; i < sendBufferSize; i++) {
+              let s = Math.max(-1, Math.min(1, this.audioBuffer[i]));
+              buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            // 保存录制的PCM数据
+            this.recordedPcmChunks.push(new Int16Array(buffer));
+            
+            try {
+              this.lastSendTime = new Date().getTime();
+              this.ws.send(buffer.buffer);
+              
+              // 更新统计数据
+              this.audioDataSent += Math.round(buffer.byteLength / 1024);
+              this.wsMessagesSent++;
+              
+            } catch (error) {
+              console.error('发送错误:', error);
+            }
+            
+            // 处理剩余数据
+            if (sendBufferSize < this.BUFFER_SIZE) {
+              const remainingData = new Float32Array(this.BUFFER_SIZE - sendBufferSize);
+              remainingData.set(this.audioBuffer.subarray(sendBufferSize, this.BUFFER_SIZE));
+              this.audioBuffer = remainingData;
+              this.bufferIndex = this.BUFFER_SIZE - sendBufferSize;
+            } else {
+              this.bufferIndex = 0;
+              this.audioBuffer = new Float32Array(this.BUFFER_SIZE);
+            }
+            
+            // 更新缓冲区状态
+            const newFillPercentage = Math.min(100, Math.max(0, (this.bufferIndex / this.BUFFER_SIZE) * 100));
+            this.bufferProgress = newFillPercentage;
+          }
+        };
+        
+        // 连接处理器
+        source.connect(this.recorder);
+        this.recorder.connect(this.audioContext.destination);
+        
+        // 启动音频可视化
+        this.startAudioVisualization();
+        
+      } catch (error) {
+        console.error('音频处理初始化失败:', error);
+      }
+    },
+    
+    startAudioVisualization() {
+      this.visualizationInterval = setInterval(() => {
+        if (!this.isAnswering || !this.audioBuffer) return;
+        
+        // 随机生成音频可视化高度（实际项目中应基于真实音频数据）
+        this.visualizerBars = this.visualizerBars.map(bar => {
+          const baseHeight = this.isAnswering ? 5 + Math.random() * 15 : 5;
+          return { height: baseHeight };
+        });
+      }, 100);
+    },
+    
     startTimers() {
-      // 主计时器（记录总面试时间）
+      // 主计时器
       this.timerInterval = setInterval(() => {
         if (this.isInterviewActive) {
           this.timer++;
           
           // 更新进度
-          this.progress = Math.min(100, (this.timer / 300) * 100); // 5分钟面试
+          this.progress = Math.min(100, this.timer / 2);
           
           // 更新情绪数据
           this.updateEmotions();
@@ -644,57 +670,82 @@ export default {
       }, 1000);
     },
     
-    // 开始倒计时（每个问题2分钟）
-    startCountdown() {
-      this.countdown = 120; // 重置为120秒
+    handleQuestionMessage(data) {
+      // 更新当前问题
+      this.currentQuestion = data.content || "请回答下一个问题";
+      this.questionType = data.category || '行为问题';
+      this.questionTimeLeft = `剩余时间 ${data.timeLimit || '3:00'}`;
+      this.lastQuestion = data.content;
       
-      // 清除可能存在的旧计时器
-      if (this.countdownInterval) {
-        clearInterval(this.countdownInterval);
+      // 更新AI状态
+      this.aiStatus = '提问中';
+      this.aiSubStatus = '请回答问题';
+      this.responseProgress = 0;
+      this.listeningProgress = 45;
+      this.processingProgress = 25;
+      
+      // 播放提示音
+      this.playNotificationSound();
+    },
+    
+    handleFeedbackMessage(data) {
+      // 更新情绪分析
+      if (data.emotions) {
+        this.emotions = { ...this.emotions, ...data.emotions };
       }
       
-      // 设置新计时器
-      this.countdownInterval = setInterval(() => {
-        if (this.countdown > 0 && this.isInterviewActive) {
-          this.countdown--;
+      // 更新实时反馈列表
+      if (data.feedback) {
+        this.feedbackList = data.feedback.map(item => {
+          let type = 'blue';
+          let icon = 'fas fa-info-circle';
           
-          // 更新剩余时间显示
-          this.questionTimeLeft = `剩余时间 ${this.formatTime(this.countdown)}`;
-          
-          // 当倒计时结束时自动停止回答
-          if (this.countdown === 0) {
-            this.stopAnswering();
+          if (item.severity === 'positive') {
+            type = 'green';
+            icon = 'fas fa-check';
+          } else if (item.severity === 'warning') {
+            type = 'yellow';
+            icon = 'fas fa-exclamation';
           }
-        }
-      }, 1000);
-    },
-    
-    // 处理问题消息
-    handleQuestionMessage(message) {
-      try {
-        const data = JSON.parse(message);
-        if (data.type === 'question') {
-          this.currentQuestion = data.content;
-          this.questionType = data.category || '行为问题';
-          this.questionTimeLeft = `剩余时间 ${data.timeLimit || '3:00'}`;
-          this.lastQuestion = data.content;
           
-          // 更新AI状态
-          this.aiStatus = '提问中';
-          this.aiSubStatus = '请回答问题';
-          this.responseProgress = 0;
-          this.listeningProgress = 45;
-          this.processingProgress = 25;
-          
-          // 播放提示音
-          this.playNotificationSound();
-        }
-      } catch (e) {
-        console.error('解析问题消息失败:', e);
+          return { type, icon, text: item.message };
+        });
+      }
+      
+      // 更新反馈提示
+      if (data.tip) {
+        this.feedbackTip = data.tip;
       }
     },
     
-    // 发送控制消息
+    handleStatusMessage(data) {
+      // 更新系统状态
+      if (data.status) {
+        this.aiStatus = data.status;
+      }
+      
+      if (data.subStatus) {
+        this.aiSubStatus = data.subStatus;
+      }
+      
+      // 更新进度
+      if (data.progress) {
+        this.listeningProgress = data.progress.listening || 0;
+        this.processingProgress = data.progress.processing || 0;
+        this.responseProgress = data.progress.response || 0;
+      }
+    },
+    
+    handleAnalysisMessage(data) {
+      // 处理详细分析数据
+      console.log('收到分析数据:', data);
+      
+      // 更新情绪数据（如果提供）
+      if (data.analysis) {
+        this.emotions = { ...this.emotions, ...data.analysis };
+      }
+    },
+    
     sendControlMessage(action) {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
       
@@ -711,40 +762,6 @@ export default {
       }
     },
     
-    // 下一个问题
-    nextQuestion() {
-      if (this.currentQuestionIndex < this.javaQuestions.length - 1) {
-        this.currentQuestionIndex++;
-        this.currentQuestion = this.javaQuestions[this.currentQuestionIndex];
-        this.questionType = this.getQuestionType(this.currentQuestionIndex);
-        
-        // 重置倒计时
-        this.startCountdown();
-        
-        this.lastQuestion = this.currentQuestion;
-        
-        // 重置回答状态
-        this.isAnswering = false;
-        
-        // 更新AI状态
-        this.aiStatus = '等待回答';
-        this.aiSubStatus = '请点击开始回答按钮';
-        
-        // 播放提示音
-        this.playNotificationSound();
-      } else {
-        // 问题结束
-        this.stopInterview();
-      }
-    },
-    
-    // 获取问题类型
-    getQuestionType(index) {
-      const types = ['Java基础', 'JVM', '集合框架', '并发编程', 'Spring框架'];
-      return types[index] || 'Java技术';
-    },
-    
-    // 重复问题
     repeatQuestion() {
       if (this.lastQuestion) {
         this.currentQuestion = this.lastQuestion;
@@ -752,7 +769,6 @@ export default {
       }
     },
     
-    // 播放提示音
     playNotificationSound() {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator = audioCtx.createOscillator();
@@ -762,7 +778,7 @@ export default {
       gainNode.connect(audioCtx.destination);
       
       oscillator.type = 'sine';
-      oscillator.frequency.value = 523.25; // C5
+      oscillator.frequency.value = 523.25;
       gainNode.gain.value = 0.3;
       
       oscillator.start();
@@ -773,115 +789,47 @@ export default {
       }, 300);
     },
     
-    // 更新情绪分析数据 (优化后的算法)
     updateEmotions() {
-      // 基础变化趋势
-      const baseChange = {
-        confidence: 0.4,
-        engagement: 0.35,
-        nervousness: -0.5,
-        enthusiasm: 0.3
-      };
-      
-      // 添加随机波动 (±5%)
-      const fluctuation = {
-        confidence: (Math.random() - 0.5) * 10,
-        engagement: (Math.random() - 0.5) * 10,
-        nervousness: (Math.random() - 0.5) * 10,
-        enthusiasm: (Math.random() - 0.5) * 10
-      };
-      
-      // 应用变化
-      for (const emotion in this.emotions) {
-        // 确保情绪值在合理范围内 (5%-95%)
-        this.emotions[emotion] = Math.max(5, Math.min(95, 
-          this.emotions[emotion] + baseChange[emotion] + fluctuation[emotion]
-        ));
-      }
-      
-      // 回答问题时的额外调整
-      if (this.isAnswering) {
-        // 回答问题时紧张度下降更快，自信度增加更快
-        this.emotions.confidence = Math.min(95, this.emotions.confidence + 0.2);
-        this.emotions.nervousness = Math.max(5, this.emotions.nervousness - 0.3);
-      }
-      
-      // 更新反馈提示
-      this.updateFeedbackTip();
+      // 这些数值仅用于演示
+      this.emotions.confidence = Math.min(95, this.emotions.confidence + Math.random() * 2);
+      this.emotions.engagement = Math.min(98, this.emotions.engagement + Math.random() * 1.5);
+      this.emotions.nervousness = Math.max(5, this.emotions.nervousness - Math.random() * 2);
+      this.emotions.enthusiasm = Math.min(90, this.emotions.enthusiasm + Math.random() * 1.8);
     },
     
-    // 更新反馈提示
-    updateFeedbackTip() {
-      const tips = [
-        "您保持逻辑清晰做得很好。在解释概念时可以尝试结合具体项目经验。",
-        "回答时语速适中，这有助于面试官理解您的思路。",
-         "在交流过程中保持积极、自信的态度，有助于建立良好印象。",
-        "保持语速适中、语气平稳，有助于传达清晰的信息。",
-        "您的回答展示了扎实的基础知识，可以进一步展示您解决问题的能力。"
-      ];
-      
-      this.feedbackTip = tips[Math.floor(Math.random() * tips.length)];
-    },
-    
-    // 更新AI状态
     updateAiStatus() {
-      if (!this.isInterviewActive) return;
-      
-      if (this.isAnswering) {
-        this.aiStatus = '分析中';
-        this.aiSubStatus = '正在分析您的回答';
-      } else {
-        this.aiStatus = '等待回答';
-        this.aiSubStatus = '请点击开始回答按钮';
-      }
+      this.aiStatus = '聆听中';
+      this.aiSubStatus = '分析回答';
       
       // 进度模拟
       this.listeningProgress = 80 + Math.floor(Math.random() * 15);
       this.processingProgress = 45 + Math.floor(Math.random() * 20);
       this.responseProgress = 15 + Math.floor(Math.random() * 25);
       
-      // 更新反馈列表
-      this.feedbackList = [
-        { 
-          type: 'green', 
-          icon: 'fas fa-check', 
-          text: "上一个回答中很好地使用了具体例子说明" 
-        },
-        { 
-          type: 'yellow', 
-          icon: 'fas fa-exclamation', 
-          text: "尝试减少技术术语堆砌，确保解释清晰易懂" 
-        },
-        { 
-          type: 'blue', 
-          icon: 'fas fa-info-circle', 
-          text: "您的技术术语使用准确率：92%" 
-        }
-      ];
+      // 更新反馈
+      this.feedbackTip = "您保持眼神交流做得很好。在讨论成就时尝试多微笑。";
     },
     
-    // 停止录音
     stopRecording() {
-      // 1. 立即停止数据处理
       this.isInterviewActive = false;
       this.isRecording = false;
       this.isAnswering = false;
       
-      // 2. 清除音频处理器
       if (this.recorder) {
-        // 移除事件监听器
         this.recorder.onaudioprocess = null;
         this.recorder.disconnect();
         this.recorder = null;
       }
       
-      // 3. 释放媒体资源
+      if (this.visualizationInterval) {
+        clearInterval(this.visualizationInterval);
+      }
+      
       if (this.stream) {
         this.stream.getTracks().forEach(track => track.stop());
         this.stream = null;
       }
       
-      // 4. 关闭音频上下文
       if (this.audioContext) {
         this.audioContext.close().then(() => {
           console.log('音频上下文已关闭');
@@ -889,84 +837,41 @@ export default {
         });
       }
       
-      // 5. 更新UI状态
-      this.interviewStatus = '已结束';
+      this.audioStatus = '已结束';
       this.interviewStatusTime = '已完成';
       this.aiStatus = '离线';
       this.aiSubStatus = '面试结束';
       
-      // 6. 清理定时器
       if (this.timerInterval) {
         clearInterval(this.timerInterval);
       }
       
-      // 7. 清理倒计时
-      if (this.countdownInterval) {
-        clearInterval(this.countdownInterval);
-        this.countdownInterval = null;
-      }
+      this.bufferStatus = '空闲';
+      this.bufferProgress = 0;
+      
+      // 重置可视化
+      this.visualizerBars = this.visualizerBars.map(() => ({ height: 5 }));
     },
     
-    // 结束面试
     stopInterview() {
-      // 发送结束消息
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.sendControlMessage('stop');
         this.ws.close();
       }
       
-      // 停止录音
       this.stopRecording();
-      
-      // 生成面试总结
-      this.generateSummary();
-      
-      // 显示总结报告
-      this.showSummary = true;
+      alert('面试已结束！数据已保存');
     },
     
-    // 生成面试总结
-    generateSummary() {
-      const currentDate = new Date();
-      const durationMinutes = (this.timer / 60).toFixed(1);
-      
-      // 计算平均回答时间（秒）
-      const totalAnswerTime = (this.javaQuestions.length * 120) - this.countdown;
-      const avgAnswerTime = totalAnswerTime / (this.currentQuestionIndex + 1);
-      
-      // 综合评分
-      const overallScore = 7.0 + Math.random() * 2.5; // 7.0-9.5分
-      
-      // 生成总结内容
-      this.interviewSummary = {
-        date: `${currentDate.toLocaleDateString()} ${currentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        duration: durationMinutes,
-        totalQuestions: this.javaQuestions.length,
-        answeredQuestions: this.currentQuestionIndex + 1,
-        avgAnswerTime: avgAnswerTime.toFixed(1),
-        overallScore: overallScore.toFixed(1),
-        confidence: this.emotions.confidence,
-        engagement: this.emotions.engagement,
-        nervousness: this.emotions.nervousness,
-        enthusiasm: this.emotions.enthusiasm,
-        feedback: "您对Java核心概念有较好的理解，尤其在多态性和集合框架方面表现突出。但在解释垃圾回收机制和线程安全实现细节时可以考虑增加更多技术深度。",
-        strengths: [
-          "对面向对象概念理解清晰",
-          "能够结合实际项目经验解释技术点",
-          "回答问题结构清晰有条理",
-          "在压力下能保持冷静思考"
-        ],
-        weaknesses: [
-          "部分高级话题可进一步深入",
-          "在JVM优化方面需加强细节理解",
-          "技术术语使用可更精确",
-          "回答节奏可更平稳"
-        ],
-        tip: "建议加强对Java内存模型和并发工具包的学习，阅读《Java并发编程实战》相关内容并尝试在实际项目中应用这些知识。"
-      };
+    toggleMute() {
+      this.isMuted = !this.isMuted;
+      if (this.stream) {
+        this.stream.getAudioTracks().forEach(track => {
+          track.enabled = !this.isMuted;
+        });
+      }
     },
     
-    // 开始/停止回答
     toggleAnswering() {
       if (this.isAnswering) {
         this.stopAnswering();
@@ -975,21 +880,27 @@ export default {
       }
     },
     
-    // 开始回答
     startAnswering() {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
         alert('请先连接到WebSocket服务器');
         return;
       }
       
+      if (!this.audioContext) {
+        this.setupAudioProcessing();
+      }
+      
+      // 重置缓冲区
+      this.audioBuffer = new Float32Array(this.BUFFER_SIZE);
+      this.bufferIndex = 0;
+      this.bufferStatus = '空闲';
+      this.bufferProgress = 0;
+      
       this.isAnswering = true;
       this.aiStatus = '正在聆听';
       this.aiSubStatus = '请回答当前问题';
-      
-      console.log('开始回答');
     },
     
-    // 停止回答（延迟4秒后更新问题）
     stopAnswering() {
       if (!this.isAnswering) return;
       
@@ -997,23 +908,42 @@ export default {
       this.aiStatus = '正在分析';
       this.aiSubStatus = '处理您的回答';
       
-      // 模拟发送结束回答消息
+      // 发送缓冲区中剩余的数据
+      if (this.bufferIndex > 0) {
+        const buffer = new Int16Array(this.bufferIndex);
+        
+        for (let i = 0; i < this.bufferIndex; i++) {
+          let s = Math.max(-1, Math.min(1, this.audioBuffer[i]));
+          buffer[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        
+        try {
+          this.ws.send(buffer.buffer);
+          this.audioDataSent += Math.round(buffer.byteLength / 1024);
+          this.wsMessagesSent++;
+        } catch (error) {
+          console.error('发送剩余数据失败:', error);
+        }
+        
+        // 重置缓冲区
+        this.bufferIndex = 0;
+        this.bufferProgress = 0;
+        this.bufferStatus = '空闲';
+      }
+      
+      // 发送结束回答消息
       try {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send("-1"); // 结束回答标记
-          console.log("已发送结束标记: -1");
+          const stopSignal = new Int16Array(16);
+          stopSignal.fill(-1);
+          
+          // 发送二进制数据
+          this.ws.send(stopSignal.buffer);
         }
       } catch (error) {
         console.error('发送结束回答消息失败:', error);
       }
-      
-      // 4秒后切换到下一个问题
-      setTimeout(() => {
-        this.nextQuestion();
-      }, 4000);
-      
-      console.log('停止回答');
-    }
+    },
   },
   beforeDestroy() {
     // 组件销毁前清理资源
@@ -1028,87 +958,6 @@ export default {
 </script>
 
 <style scoped>
-/* 面试卡片样式 */
-.interview-card {
-  background-color: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  padding: 1.75rem;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.interview-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-.question-display {
-  width: 100%;
-  height: 300px;
-  border-radius: 0.75rem;
-  margin-bottom: 1.25rem;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f3f4f6 25%, #e5e7eb 25%, #e5e7eb 50%, #f3f4f6 50%, #f3f4f6 75%, #e5e7eb 75%);
-  background-size: 40px 40px;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.interview-placeholder {
-  padding: 2rem;
-}
-
-.interview-icon {
-  width: 5rem;
-  height: 5rem;
-  background-color: #dbeafe;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-}
-
-.interview-icon i {
-  color: #3b82f6;
-  font-size: 2.5rem;
-}
-
-.interview-progress {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 5px 10px;
-  border-radius: 15px;
-  font-size: 0.85rem;
-}
-
-.question-content {
-  padding: 2rem;
-  font-size: 1.25rem;
-  line-height: 1.6;
-  max-width: 90%;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.interview-controls {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-
-/* 其他样式保持不变 */
 .interview-container {
   max-width: 1400px;
   margin: 0 auto;
@@ -1222,7 +1071,7 @@ export default {
   gap: 1.5rem;
 }
 
-.progress-card, .emotion-card, .question-card, .ai-status-card, .feedback-card {
+.camera-card, .progress-card, .emotion-card, .question-card, .ai-status-card, .feedback-card {
   background-color: white;
   border-radius: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
@@ -1232,9 +1081,25 @@ export default {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.progress-card:hover, .emotion-card:hover, .question-card:hover, .ai-status-card:hover, .feedback-card:hover {
+.camera-card:hover, .progress-card:hover, .emotion-card:hover, .question-card:hover, .ai-status-card:hover, .feedback-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.camera-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.camera-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .status-indicator {
@@ -1263,18 +1128,118 @@ export default {
   100% { opacity: 1; }
 }
 
-.recording-timer {
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 1rem 0;
-  padding: 0.75rem;
-  background-color: #f3f4f6;
-  border-radius: 0.5rem;
-  font-family: monospace;
+.audio-visualization {
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  border-radius: 0.75rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e5e7eb 25%, #f3f4f6 25%, #f3f4f6 50%, #e5e7eb 50%, #e5e7eb 75%, #f3f4f6 75%);
+  background-size: 40px 40px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.audio-visualizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1rem;
+}
+
+.audio-visualizer.active .bar {
+  background-color: #3b82f6;
+  animation: audioBar 1.2s infinite ease-in-out;
+}
+
+.audio-visualizer .bar {
+  width: 8px;
+  background-color: #d1d5db;
+  border-radius: 4px;
+  transition: height 0.2s ease;
+}
+
+@keyframes audioBar {
+  0%, 100% { opacity: 0.7; transform: scaleY(0.8); }
+  50% { opacity: 1; transform: scaleY(1.1); }
+}
+
+.audio-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  color: #6b7280;
+  padding: 1rem;
+}
+
+.audio-icon {
+  width: 5rem;
+  height: 5rem;
+  background-color: #dbeafe;
+  border-radius: 50%;
+  display:flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.audio-icon i {
+  color: #3b82f6;
+  font-size: 2rem;
+}
+
+.status-overlay {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background-color: rgba(0,0,0,0.6);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.buffer-indicator {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.progress-container {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #64b5f6;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
 }
 
 .ws-status {
@@ -1297,10 +1262,31 @@ export default {
   color: #b91c1c;
 }
 
+.camera-controls {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
 .start-button-container {
   display: flex;
   justify-content: center;
   margin-top: 1.25rem;
+}
+
+.recording-timer {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: #f3f4f6;
+  border-radius: 0.5rem;
+  font-family: monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sent-data-info {
@@ -1669,283 +1655,13 @@ export default {
     flex-wrap: wrap;
   }
   
-  .interview-controls {
+  .camera-controls {
     grid-template-columns: 1fr;
   }
   
   .status-visual {
     width: 8rem;
     height: 8rem;
-  }
-  
-  .question-display {
-    height: 250px;
-  }
-}
-.summary-container {
-  margin-top: 2rem;
-  padding: 2rem;
-  background-color: #f9fafb;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-.summary-content {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.summary-card {
-  background-color: white;
-  border-radius: 0.75rem;
-  padding: 2.5rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-}
-
-.summary-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.summary-icon {
-  width: 5rem;
-  height: 5rem;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  border-radius: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1.5rem;
-  font-size: 2.5rem;
-}
-
-.summary-header h3 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
-}
-
-.summary-header p {
-  color: #6b7280;
-  font-size: 1rem;
-  margin: 0.25rem 0;
-}
-
-.performance-stats {
-  display: flex;
-  justify-content: space-between;
-  margin: 2rem 0;
-}
-
-.stat-box {
-  flex: 1;
-  text-align: center;
-  padding: 1.5rem;
-  background-color: #f9fafb;
-  border-radius: 0.75rem;
-  margin: 0 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.03);
-}
-
-.stat-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #3b82f6;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  font-size: 1rem;
-  color: #6b7280;
-}
-
-.emotion-overview {
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background-color: #f9fafb;
-  border-radius: 0.75rem;
-}
-
-.emotion-overview h4 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #1f2937;
-}
-
-.emotion-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-.emotion-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem;
-  background-color: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.03);
-}
-
-.emotion-title {
-  display: flex;
-  align-items: center;
-}
-
-.emotion-title i {
-  font-size: 1.5rem;
-  margin-right: 1rem;
-}
-
-.emotion-title .blue { color: #3b82f6; }
-.emotion-title .green { color: #10b981; }
-.emotion-title .yellow { color: #f59e0b; }
-.emotion-title .purple { color: #8b5cf6; }
-
-.emotion-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.feedback-section {
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background-color: #f9fafb;
-  border-radius: 0.75rem;
-}
-
-.feedback-section h4 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #1f2937;
-}
-
-.feedback-content {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  line-height: 1.7;
-  font-size: 1.05rem;
-}
-
-.strengths-weaknesses {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-}
-
-.strengths, .weaknesses {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-}
-
-.strengths h5, .weaknesses h5 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-}
-
-.strengths ul, .weaknesses ul {
-  padding-left: 1.25rem;
-}
-
-.strengths li, .weaknesses li {
-  margin-bottom: 0.75rem;
-  position: relative;
-  padding-left: 1.5rem;
-}
-
-.strengths li:before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  color: #10b981;
-}
-
-.weaknesses li:before {
-  content: "!";
-  position: absolute;
-  left: 0;
-  color: #f59e0b;
-  font-weight: bold;
-}
-
-.tips-section {
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background-color: #f9fafb;
-  border-radius: 0.75rem;
-}
-
-.tips-section h4 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #1f2937;
-}
-
-.tip {
-  display: flex;
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-}
-
-.tip-icon {
-  width: 3rem;
-  height: 3rem;
-  background-color: #dbeafe;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1.5rem;
-  flex-shrink: 0;
-}
-
-.tip-icon i {
-  color: #3b82f6;
-  font-size: 1.5rem;
-}
-
-.tip p {
-  margin: 0;
-  font-size: 1.1rem;
-  line-height: 1.7;
-}
-
-.actions-section {
-  display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-top: 2rem;
-}
-
-/* 确保情绪分析显示4位小数 */
-.metric-label span:last-child {
-  font-family: monospace;
-}
-
-@media (max-width: 768px) {
-  .performance-stats, .emotion-grid, .strengths-weaknesses {
-    grid-template-columns: 1fr;
-  }
-  
-  .stat-box {
-    margin: 0.5rem 0;
   }
 }
 </style>
